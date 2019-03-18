@@ -1,13 +1,17 @@
+/*
+Controls the crawling through a website's structure, also manages the crawler state.
+*/
 package crawler
 
 import (
 	"golang-webcrawler/fetcher"
 	"net/url"
+	"strings"
 	"sync"
 )
 
-type Crawled struct {
-	Uris  map[string]struct{}
+type Crawled struct { // Struct to manage Crawl state in one place.
+	Urls  map[string]struct{}
 	Mutex sync.Mutex
 }
 
@@ -15,38 +19,43 @@ func Crawl(page *fetcher.Page, alreadyCrawled *Crawled) {
 	if page.Depth <= 0 {
 		return
 	}
-	if hasAlreadyCrawled(page.URL, alreadyCrawled) {
+	if hasAlreadyCrawled(page.Url, alreadyCrawled) {
 		return
 	}
-	uris := fetcher.FetchURLs(page.URL)
 	wg := sync.WaitGroup{}
 	childPagesChan := make(chan *fetcher.Page)
-	for _, uri := range uris {
+	childUrls, _, _ := fetcher.FetchUrls(page.Url)
+	for _, childUrl := range childUrls { // Iterate through links found on page
 		wg.Add(1)
-		go func(uri *url.URL) {
+		go func(childUrl *url.URL) { // create goroutines for each link found and crawl the child page
 			defer wg.Done()
-			childPage := fetcher.Page{URL: uri, Depth: page.Depth - 1}
+			childPage := fetcher.Page{Url: childUrl, Depth: page.Depth - 1}
 			Crawl(&childPage, alreadyCrawled)
 			childPagesChan <- &childPage
-		}(uri)
+		}(childUrl)
 	}
-	go func() {
+	go func() { // Close channel when direct child pages have returned
 		wg.Wait()
 		close(childPagesChan)
 	}()
-	for childPages := range childPagesChan {
+	for childPages := range childPagesChan { // Feed channel values into slice, possibly performance inefficient.
 		page.Links = append(page.Links, childPages)
 	}
 }
 
-func hasAlreadyCrawled(uri *url.URL, alreadyCrawled *Crawled) bool {
+func hasAlreadyCrawled(Url *url.URL, alreadyCrawled *Crawled) bool {
+	/*
+		Locks alreadyCrawled, then returns true/false dependent on Url being in map.
+		If false, we store the Url.
+	*/
+	cleanUrl := strings.TrimRight(Url.String(), "/")
 	alreadyCrawled.Mutex.Lock()
-	_, isPresent := alreadyCrawled.Uris[uri.String()]
+	_, isPresent := alreadyCrawled.Urls[cleanUrl]
 	if isPresent {
 		alreadyCrawled.Mutex.Unlock()
 		return true
 	}
-	alreadyCrawled.Uris[uri.String()] = struct{}{} //add url to list of those seen
+	alreadyCrawled.Urls[cleanUrl] = struct{}{} //add url to list of those seen
 	alreadyCrawled.Mutex.Unlock()
 	return false
 }
