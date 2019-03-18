@@ -55,7 +55,7 @@ func hasAlreadyCrawled(Url *url.URL, alreadyCrawled *Crawled) bool {
 		alreadyCrawled.Mutex.Unlock()
 		return true
 	}
-	alreadyCrawled.Urls[cleanUrl] = struct{}{} //add url to list of those seen
+	alreadyCrawled.Urls[cleanUrl] = struct{}{}
 	alreadyCrawled.Mutex.Unlock()
 	return false
 }
