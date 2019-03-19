@@ -1,8 +1,8 @@
-package crawler_test
+package crawl_test
 
 import (
-	"golang-webcrawler/crawler"
-	"golang-webcrawler/fetcher"
+	"golang-webcrawler/crawl"
+	"golang-webcrawler/fetch"
 	"net/url"
 	"testing"
 )
@@ -32,11 +32,11 @@ var PageReturnTests = []string{
 
 func TestAlreadyCrawled(t *testing.T) {
 	for _, test := range CrawlTests {
-		alreadyProcessed := crawler.Crawled{Urls: make(map[string]struct{})}
+		crawler := crawl.Crawler{AlreadyCrawled: make(map[string]struct{})}
 		rootUrl, _ := url.Parse(test.Url)
-		rootPage := fetcher.Page{Url: rootUrl, Depth: test.Depth}
-		crawler.Crawl(&rootPage, &alreadyProcessed)
-		for Url := range alreadyProcessed.Urls { // Iterate through crawled Urls and recursively search for each one
+		rootPage := fetch.Page{Url: rootUrl, Depth: test.Depth}
+		crawler.Crawl(&rootPage)
+		for Url := range crawler.AlreadyCrawled { // Iterate through crawled AlreadyCrawled and recursively search for each one
 			var countedDepths []int
 			crawledCounter := 0
 			recursivelySearchPages(t, &rootPage, Url, &crawledCounter, &countedDepths)()
@@ -46,11 +46,12 @@ func TestAlreadyCrawled(t *testing.T) {
 
 func TestAllPagesReturned(t *testing.T) {
 	for _, testUrl := range PageReturnTests {
-		alreadyProcessed := crawler.Crawled{Urls: make(map[string]struct{})}
+		crawler := crawl.Crawler{AlreadyCrawled: make(map[string]struct{})}
 		rootUrl, _ := url.Parse(testUrl)
-		Urls, _, _ := fetcher.FetchUrls(rootUrl)
-		rootPage := fetcher.Page{Url: rootUrl, Depth: 1}
-		crawler.Crawl(&rootPage, &alreadyProcessed)
+		rootPage := fetch.Page{Url: rootUrl, Depth: 1}
+		Urls, _ := rootPage.FetchUrls()
+
+		crawler.Crawl(&rootPage)
 		if len(rootPage.Links) != len(Urls) {
 			t.Fatalf("%s: page.Links length (%d) did not match FetchUrls output length (%d).",
 				testUrl, len(rootPage.Links), len(Urls))
@@ -59,7 +60,7 @@ func TestAllPagesReturned(t *testing.T) {
 }
 
 // Helper Function for TestAlreadyCrawled. Cleanest way to implement recursive map checking into the test.
-func recursivelySearchPages(t *testing.T, p *fetcher.Page, Url string, counter *int, depths *[]int) func() {
+func recursivelySearchPages(t *testing.T, p *fetch.Page, Url string, counter *int, depths *[]int) func() {
 	return func() {
 		for _, v := range p.Links {
 			if v.Links != nil && v.Url.String() == Url { // Check if page has links

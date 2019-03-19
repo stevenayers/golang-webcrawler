@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"golang-webcrawler/crawler"
-	"golang-webcrawler/fetcher"
+	"golang-webcrawler/crawl"
+	"golang-webcrawler/fetch"
 	"net/url"
 	"strings"
 	"time"
@@ -19,10 +19,10 @@ func main() {
 	flag.Parse()
 
 	rootUrl, _ := url.Parse(*Url)
-	rootPage := fetcher.Page{Url: rootUrl, Depth: *Depth}
-	alreadyCrawled := crawler.Crawled{Urls: make(map[string]struct{})}
+	rootPage := fetch.Page{Url: rootUrl, Depth: *Depth}
+	crawler := crawl.Crawler{AlreadyCrawled: make(map[string]struct{})}
 	startTime := time.Now()
-	crawler.Crawl(&rootPage, &alreadyCrawled)
+	crawler.Crawl(&rootPage)
 	duration := time.Since(startTime)
 
 	printSiteMap(&rootPage, 0)
@@ -30,7 +30,7 @@ func main() {
 	fmt.Printf("Root URL: %s, Depth: %d\n", *Url, *Depth)
 }
 
-func printSiteMap(page *fetcher.Page, indent int) {
+func printSiteMap(page *fetch.Page, indent int) {
 	formattedUrl := strings.Repeat(" ", indent) + page.Url.String()
 	fmt.Println(formattedUrl)
 	if len(page.Links) > 0 {

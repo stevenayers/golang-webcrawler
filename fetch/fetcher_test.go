@@ -1,7 +1,7 @@
-package fetcher_test
+package fetch_test
 
 import (
-	"golang-webcrawler/fetcher"
+	"golang-webcrawler/fetch"
 	"net/url"
 	"testing"
 )
@@ -51,7 +51,8 @@ var ParseUrlTests = []ParseUrlTest{
 func TestFetchUrlsHttpError(t *testing.T) {
 	for _, test := range FetchUrlTests {
 		Url, _ := url.Parse(test.Url)
-		_, err, _ := fetcher.FetchUrls(Url)
+		page := fetch.Page{Url: Url, Depth: 1}
+		_, err := page.FetchUrls()
 		if (err != nil) != test.httpError {
 			t.Fatalf("%s returned error: %t (expected %t)", test.Url, !test.httpError, test.httpError)
 		}
@@ -60,11 +61,12 @@ func TestFetchUrlsHttpError(t *testing.T) {
 
 // If I had more time, I could also simulate a page with a given number of links, and check that the number of links
 // on the page reflect the number of links returned.
-// Another test case is checking for document errors, which is why docError is being returned from FetchUrls.
+// Another test case is checking correct errors from parseDoc
+// Would also test IsRelativeHtml regexs (very important to test Regex)
 
 func TestIsRelativeUrl(t *testing.T) {
 	for _, test := range RelativeUrlTests {
-		if fetcher.IsRelativeUrl(test.Url) != test.IsRelative {
+		if fetch.IsRelativeUrl(test.Url) != test.IsRelative {
 			t.Fatalf("URL %s did not return %t", test.Url, test.IsRelative)
 		}
 	}
@@ -73,7 +75,7 @@ func TestIsRelativeUrl(t *testing.T) {
 func TestParseRelativeUrl(t *testing.T) {
 	rootUrl, _ := url.Parse("http://example.com")
 	for _, test := range ParseUrlTests {
-		absoluteUrl := fetcher.ParseRelativeUrl(rootUrl, test.Url)
+		absoluteUrl := fetch.ParseRelativeUrl(rootUrl, test.Url)
 		if absoluteUrl.String() != test.ExpectedUrl {
 			t.Fatalf("Relative URL %s did not match %s when parsed: %s", test.Url, test.ExpectedUrl, absoluteUrl)
 		}
