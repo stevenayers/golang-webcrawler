@@ -12,7 +12,7 @@ import (
 
 type Crawler struct { // Struct to manage Crawl state in one place.
 	AlreadyCrawled map[string]struct{}
-	Mutex          sync.Mutex
+	sync.Mutex
 }
 
 func (crawler *Crawler) Crawl(page *fetch.Page) {
@@ -43,19 +43,17 @@ func (crawler *Crawler) Crawl(page *fetch.Page) {
 	}
 }
 
-func (crawler *Crawler) hasAlreadyCrawled(Url *url.URL) bool {
+func (crawler *Crawler) hasAlreadyCrawled(Url *url.URL) (isPresent bool) {
 	/*
 		Locks crawl, then returns true/false dependent on Url being in map.
 		If false, we store the Url.
 	*/
+	defer crawler.Unlock()
 	cleanUrl := strings.TrimRight(Url.String(), "/")
-	crawler.Mutex.Lock()
-	_, isPresent := crawler.AlreadyCrawled[cleanUrl]
-	if isPresent {
-		crawler.Mutex.Unlock()
-		return true
+	crawler.Lock()
+	_, isPresent = crawler.AlreadyCrawled[cleanUrl]
+	if !isPresent {
+		crawler.AlreadyCrawled[cleanUrl] = struct{}{}
 	}
-	crawler.AlreadyCrawled[cleanUrl] = struct{}{}
-	crawler.Mutex.Unlock()
-	return false
+	return
 }
