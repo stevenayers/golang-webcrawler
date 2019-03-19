@@ -11,7 +11,8 @@ I first looked at Python AsyncIO, because I'm more confident writing production 
 
 ## Gotchas
 - Mutex on `alreadyCrawled` because of concurrent read write error.
-- `fetchPage` returned on error but this didn't cause `fetchUrls` to return, causing nil pointer exception on `doc.NewDocumentFromReader(resp.Body)`. I ended up merging `fetchPage` into `FetchUrls`, having the http request in it's own function didn't seem necessary (however `FetchUrls` is too big for my liking, and given more time would break down to make it cleaner and for easier testing).
+- ~`fetchPage` returned on Content-Type not `text/html` but this didn't cause `fetchUrls` to return, causing nil pointer exception when Content-Type condition wasn't fulfilled. I ended up merging `fetchPage` into `FetchUrls`, having the http request in it's own function didn't seem necessary (however `FetchUrls` is too big for my liking, and given more time would break down to make it cleaner and for easier testing).~
+    _Filtering on file extensions further up the stack to prevent static content. Broken out some of `FetchUrls` out to `parseDoc` and `IsRelativeHtml` to make it cleaner._
 - I didn’t pass in `childlUrl` into `go func(){}()` inside the `childUrls` for loop, which somehow meant it did not always use the instance of `childUrl` currently being iterated over.
 - `wg.Wait(); close(childPagesChan)` was hanging if not inside a `go func(){}()` block. Explained below:
    ```
@@ -25,8 +26,7 @@ I first looked at Python AsyncIO, because I'm more confident writing production 
    ```
 
 ## Issues
-- `Page` struct could be better suited in `crawler.go` . It's never referenced inside `fetcher.go` (lack of cohesion). Coupled fetcher & crawler together.
-- `Crawled` struct could be `Crawler` and have `haslreadyCrawled` and `Crawl` as methods. Same with `Page` struct and `FetchUrls` function.
+- ~`Crawled` struct could be `Crawler` and have `haslreadyCrawled` and `Crawl` as methods. Same with `Page` struct and `FetchUrls` function.~
 - Tests maybe should have used `assert.Equal` instead of `t.Fatalf()`, however `t.Fatalf()` allows custom messages (I could have written better test error messages).
 - Doesn’t retry links if get request throws an error/timeout.
 - Data structure doesn’t truly reflect a site map, which can have referencing loops. This many to many relationship data structure could be reflected if the data was stored flat in something like JSON, with reference IDs attached to each page object, and these reference IDs stored under `Page.Links` rather than nesting, and then could be rendered using something like D3js.
